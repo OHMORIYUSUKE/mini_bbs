@@ -1,3 +1,34 @@
+<?php
+error_reporting(E_ALL & ~ E_DEPRECATED & ~ E_USER_DEPRECATED & ~ E_NOTICE);
+?>
+
+<?php
+require('dbconenect.php');
+//初めてログインページに来たか判定
+//!empty($_POST)の時は初めて来たとき
+if(!empty($_POST)){
+    if($_POST['email'] !== '' && $_POST['password'] !== ''){
+      $login = $db->prepare('SELECT * FROM members WHERE email=? AND password=?');
+      $login->execute(array(
+        $_POST['email'],
+        sha1($_POST['password'])
+      ));
+      //fetchすることでデータベースからレスポンスが返ってきてるか判定する
+      $member = $login->fetch();
+      
+      if($member){
+        $_SESSION['id'] = $member['id'];
+        $_SESSION['time'] = time();
+        header('Location:index.php');
+        exit();
+      }else{
+        $error['login'] = 'failed';
+      }
+    }else{
+      $error['login'] = 'blank';
+    }
+}
+?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -21,11 +52,17 @@
       <dl>
         <dt>メールアドレス</dt>
         <dd>
-          <input type="text" name="email" size="35" maxlength="255" value="<?php echo htmlspecialchars($_POST['email']); ?>" />
+          <input type="text" name="email" size="35" maxlength="255" value="<?php echo htmlspecialchars($_POST['email'], ENT_QUOTES); ?>" />
+          <?php if($error['login'] === 'blank'): ?>
+            <p class="error">*メールアドレス・パスワードが入力されていません。</p>
+          <?php endif; ?>
+          <?php if($error['login'] === 'failed'): ?>
+            <p class="error">*メールアドレス・パスワードが間違えています。</p>
+          <?php endif; ?>
         </dd>
         <dt>パスワード</dt>
         <dd>
-          <input type="password" name="password" size="35" maxlength="255" value="<?php echo htmlspecialchars($_POST['password']); ?>" />
+          <input type="password" name="password" size="35" maxlength="255" value="<?php echo htmlspecialchars($_POST['password'],ENT_QUOTES); ?>" />
         </dd>
         <dt>ログイン情報の記録</dt>
         <dd>

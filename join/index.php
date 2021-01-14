@@ -4,6 +4,7 @@ error_reporting(E_ALL & ~ E_DEPRECATED & ~ E_USER_DEPRECATED & ~ E_NOTICE);
 
 <?php
 session_start();
+require('../dbconenect.php');
 
 if(!empty($_POST)){
 
@@ -25,6 +26,17 @@ if(!empty($_POST)){
 		$ext = substr($fileName, -3);
 		if($ext != 'jpg' && $ext != 'png' && $ext != 'gif'){
 			$errer['image'] = 'type';
+		}
+	}
+
+	//アカウント重複防止
+	if(empty($error)){
+		$member = $db->prepare('SELECT COUNT(*) AS cnt FROM members WHERE email=?');
+		$member->execute(array($_POST['email']));
+		$recode = $member->fetch();
+		//$recodeは0,1を返す
+		if($recode['cnt'] > 0){
+			$errer['email'] = 'duplicate';
 		}
 	}
 
@@ -79,10 +91,15 @@ if($_REQUEST['action'] == 'rewrite'){
 		<dt>メールアドレス<span class="required">必須</span></dt>
 		<dd>
         	<input type="text" name="email" size="35" maxlength="255" value="<?php print(htmlspecialchars($_POST['email'],ENT_QUOTES)); ?>" />
-			<?php
+		<?php
 		if ($errer['email'] === 'blank'):
 		?>
 		<p class="error">*メールアドレスを入力してください。</p>
+		<?php endif;?>
+		<?php
+		if ($errer['email'] === 'duplicate'):
+		?>
+		<p class="error">*メールアドレスはすでに登録されています。</p>
 		<?php endif;?>
 		<dt>パスワード<span class="required">必須</span></dt>
 		<dd>

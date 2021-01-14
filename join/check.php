@@ -18,7 +18,7 @@ if(!empty($_POST)){
 	));
 	unset($_SESSION['join']);
 	//thanks.phpにアクセス
-	header('Location : thanks.php');
+	header('Location:thanks.php');
 	exit();
 }
 ?>
