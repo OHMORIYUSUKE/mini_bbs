@@ -30,7 +30,7 @@ if(!empty($_POST)){
 
 
 	if(empty($errer)){
-		//画像保存
+		//画像保存//現在時刻を付加して名前がかぶらないようにする
 		$image = date('YmdHis').$_FILES['image']['name'];
 		move_uploaded_file($_FILES['image']['tmp_name'],'../member_picture/'.$image);
 
