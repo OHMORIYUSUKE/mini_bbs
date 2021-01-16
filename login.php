@@ -4,9 +4,21 @@ error_reporting(E_ALL & ~ E_DEPRECATED & ~ E_USER_DEPRECATED & ~ E_NOTICE);
 
 <?php
 require('dbconenect.php');
+//session_startはセッションを使う場合は必ず書く
+session_start();
+
+//クッキーから呼び出す
+if($_COOKIE['email'] !== ''){
+  $email = $_COOKIE['email'];
+}
+
 //初めてログインページに来たか判定
 //!empty($_POST)の時は初めて来たとき
 if(!empty($_POST)){
+  
+  //入力されたメールアドレスにpostを変換する
+  $email = $_POST['email'];
+
     if($_POST['email'] !== '' && $_POST['password'] !== ''){
       $login = $db->prepare('SELECT * FROM members WHERE email=? AND password=?');
       $login->execute(array(
@@ -17,14 +29,23 @@ if(!empty($_POST)){
       $member = $login->fetch();
       
       if($member){
+        //var_dump("ログイン成功");  // ここを追加
         $_SESSION['id'] = $member['id'];
         $_SESSION['time'] = time();
-        header('Location:index.php');
+        
+          //チェックボックスにチェックが入っていたらクッキーに保存
+        if($_POST['save'] === 'on'){
+          setcookie('email',$_POST['email'],time()+60*60*24*14);
+        }
+
+        header('Location: index.php'); 
         exit();
       }else{
+        //var_dump("ログイン失敗");  // ここを追加
         $error['login'] = 'failed';
       }
     }else{
+      //var_dump("ログイン項目不足");  // ここを追加
       $error['login'] = 'blank';
     }
 }
@@ -52,12 +73,12 @@ if(!empty($_POST)){
       <dl>
         <dt>メールアドレス</dt>
         <dd>
-          <input type="text" name="email" size="35" maxlength="255" value="<?php echo htmlspecialchars($_POST['email'], ENT_QUOTES); ?>" />
+          <input type="text" name="email" size="35" maxlength="255" value="<?php echo htmlspecialchars($email, ENT_QUOTES); ?>" />
           <?php if($error['login'] === 'blank'): ?>
-            <p class="error">*メールアドレス・パスワードが入力されていません。</p>
+            <p class="error">*メールアドレスまたはパスワードが入力されていません。</p>
           <?php endif; ?>
           <?php if($error['login'] === 'failed'): ?>
-            <p class="error">*メールアドレス・パスワードが間違えています。</p>
+            <p class="error">*メールアドレスまたはパスワードが間違えています。</p>
           <?php endif; ?>
         </dd>
         <dt>パスワード</dt>
