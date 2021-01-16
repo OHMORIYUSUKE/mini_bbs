@@ -7,7 +7,7 @@ session_start();
 require('../dbconenect.php');
 
 if(!empty($_POST)){
-
+	//エラー判定
 	if($_POST['name'] === ''){
 		$errer['name']='blank';
 	}

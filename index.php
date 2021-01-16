@@ -8,7 +8,7 @@ session_start();
 require('dbconenect.php');
 
 //ログインした場合はセッションにidとtimeがあるのでifに入る
-if(isset($_SESSION['id']) && $_SESSION['time']+3600>time()){
+if(isset($_SESSION['id']) && $_SESSION['time'] + 3600 > time()){
   //ログイン中に行動したらセッションタイムを更新
   $_SESSION['time'] = time();
 
@@ -25,10 +25,12 @@ if(isset($_SESSION['id']) && $_SESSION['time']+3600>time()){
 if(!empty($_POST)){
   //下のテキストエリアがname="message"のため($_POST['message']である
   if($_POST['message'] !== ''){
-    $message = $db->prepare('INSERT INTO posts SET member_id=?, message=?, created=NOW()');
+    $message = $db->prepare('INSERT INTO posts SET member_id=?, message=?, reply_message_id=?, created=NOW()');
     $message->execute(array(
       $member['id'],
-      $_POST['message']
+      $_POST['message'],
+      //name="reply_post_id"と[Re]の属性があるため$_POST['reply_post_id']となっている
+      $_POST['reply_post_id']
     ));
     //messageをdbに保存したら再読み込みして$_POST['message']を削除する
     //リロードされて同じメッセージが誤送信されることを防ぐ
@@ -37,8 +39,27 @@ if(!empty($_POST)){
   }
 }
 
+/**
+ * query()の場合、ユーザからの入力を利用しない
+ * prepare()の場合、ユーザからの入力を利用する
+ */
+/**
+ * $_REQUEST['res']とはURLパラメータによって受け取った値を利用する
+ * $_SESSION['id']とはセッションにより受け取った値を利用する
+ */
+//投稿された内容を画面に表示
+//DESCは投稿時間順にソートしている
 $posts = $db->query('SELECT m.name, m.picture, p.* FROM members m, posts p WHERE m.id=p.member_id ORDER BY p.created DESC');
-
+//ReでURLパラメータがあったとき(?res=1)
+if(isset($_REQUEST['res'])){
+  $response = $db->prepare('SELECT m.name, m.picture, p.* FROM members m, posts p WHERE m.id=p.member_id AND p.id=?');
+  //var_dump($response);
+  $response->execute(array(
+    $_REQUEST['res']
+  ));
+  $table = $response->fetch();
+  $message = '@'.$table['name'].' '.$table['message'];
+}
 ?>
 
 <!DOCTYPE html>
@@ -63,8 +84,8 @@ $posts = $db->query('SELECT m.name, m.picture, p.* FROM members m, posts p WHERE
       <dl>
         <dt><?php print(htmlspecialchars($member['name'],ENT_QUOTES)); ?>さん、メッセージをどうぞ</dt>
         <dd>
-          <textarea name="message" cols="50" rows="5"></textarea>
-          <input type="hidden" name="reply_post_id" value="" />
+          <textarea name="message" cols="50" rows="5"><?php print(htmlspecialchars($message, ENT_QUOTES)); ?></textarea>
+          <input type="hidden" name="reply_post_id" value="<?php print(htmlspecialchars($_REQUEST['res'], ENT_QUOTES)); ?>" />
         </dd>
       </dl>
       <div>
@@ -82,11 +103,16 @@ $posts = $db->query('SELECT m.name, m.picture, p.* FROM members m, posts p WHERE
     <p><span class="name"><?php print(htmlspecialchars($post['message'], ENT_QUOTES)); ?>
     <?php //名前を表示?>
     （<?php print(htmlspecialchars($post['name'], ENT_QUOTES)); ?>）
-    </span>[<a href="index.php?res=">Re</a>]</p>
-    <?php //投稿された時刻を表示?>
-    <p class="day"><a href="view.php?id="><?php print(htmlspecialchars($post['created'], ENT_QUOTES)); ?></a>
-<a href="view.php?id=">
-返信元のメッセージ</a>
+    </span>[<a href="index.php?res=<?php print(htmlspecialchars($post['id'], ENT_QUOTES)); ?>">Re</a>]</p>
+    <?php //投稿された時刻を表示//詳細画面に遷移する?>
+    <p class="day"><a href="view.php?id=<?php print(htmlspecialchars($post['id'], ENT_QUOTES)); ?>"><?php print(htmlspecialchars($post['created'], ENT_QUOTES)); ?></a>
+
+    <?php //$post['reply_message_id']=0はリプライ元のメッセージであるためaタグを表示しない ?>
+    <?php if($post['reply_message_id'] > 0): ?>
+      <a href="view.php?id=<?php print(htmlspecialchars($post['reply_message_id'], ENT_QUOTES)); ?>">
+      返信元のメッセージ</a>
+    <?php endif; ?>
+
 [<a href="delete.php?id="
 style="color: #F33;">削除</a>]
     </p>
