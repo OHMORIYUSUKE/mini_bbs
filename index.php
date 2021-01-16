@@ -47,9 +47,32 @@ if(!empty($_POST)){
  * $_REQUEST['res']とはURLパラメータによって受け取った値を利用する
  * $_SESSION['id']とはセッションにより受け取った値を利用する
  */
+
+//URLパラメータで渡ってきたpage
+$page = $_REQUEST['page'];
+//URLパラメータで渡ってきたpageがnullだったら
+if($page == ''){
+  $page = 1;
+}
+//$pageが1より小さかったら$page=1
+$page = max($page,1);
+
+//dbからコメントの総数を取る
+$counts = $db->query('SELECT COUNT(*) AS cnt FROM posts');
+$cnt = $counts->fetch(); //SQLたたいたらfetch()する
+$maxPage = ceil($cnt['cnt'] / 5); //切り上げ
+$page = min($page,$maxPage); //$page>$maxPageだったら $page = $maxPage
+
+//ページネーションの計算
+$start = ($page - 1)*5;
+
 //投稿された内容を画面に表示
 //DESCは投稿時間順にソートしている
-$posts = $db->query('SELECT m.name, m.picture, p.* FROM members m, posts p WHERE m.id=p.member_id ORDER BY p.created DESC');
+$posts = $db->prepare('SELECT m.name, m.picture, p.* FROM members m, posts p WHERE m.id=p.member_id ORDER BY p.created DESC LIMIT ?,5');
+
+//LIMIT ?,5の?に入るのはint型ではないといけないので型指定できるbindParam(1, $start, PDO::PARAM_INT)を使う
+$posts->bindParam(1, $start, PDO::PARAM_INT);
+$posts->execute();
 //ReでURLパラメータがあったとき(?res=1)
 if(isset($_REQUEST['res'])){
   $response = $db->prepare('SELECT m.name, m.picture, p.* FROM members m, posts p WHERE m.id=p.member_id AND p.id=?');
@@ -113,15 +136,29 @@ if(isset($_REQUEST['res'])){
       返信元のメッセージ</a>
     <?php endif; ?>
 
-[<a href="delete.php?id="
-style="color: #F33;">削除</a>]
+    <?php //ログインしているユーザーの投稿のみ削除できるようにする
+          //$post['id']とは投稿の管理id ?>
+    <?php if($post['member_id'] === $_SESSION['id']): ?>
+      [<a href="delete.php?id=<?php print(htmlspecialchars($post['id'], ENT_QUOTES)); ?>"
+      style="color: #F33;">削除</a>]
+    <?php endif; ?>
+
     </p>
     </div>
 <?php endforeach; ?>
 
 <ul class="paging">
-<li><a href="index.php?page=">前のページへ</a></li>
-<li><a href="index.php?page=">次のページへ</a></li>
+<?php //ページネーション管理?>
+<?php if($page > 1): ?>
+  <li><a href="index.php?page=<?php print($page - 1); ?>">前のページへ</a></li>
+<?php else: ?>
+  <li>前のページへ</li>
+<?php endif; ?>
+<?php if($page < $maxPage): ?>
+  <li><a href="index.php?page=<?php print($page + 1); ?>">次のページへ</a></li>
+<?php else: ?>
+  <li>次のページへ</li>
+<?php endif; ?>
 </ul>
   </div>
 </div>
